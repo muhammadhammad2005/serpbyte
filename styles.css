@@ -1,0 +1,201 @@
+:root {
+  --bg-start: #e9f4de;
+  --bg-end: #cde6bc;
+  --card-bg: rgba(247, 251, 242, 0.9);
+  --card-border: rgba(22, 57, 32, 0.18);
+  --text-main: #1a2b17;
+  --text-muted: #41623b;
+  --primary: #2f7d32;
+  --primary-hover: #236327;
+  --canvas-bg: #173f22;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text-main);
+  background: radial-gradient(circle at 15% 20%, #f7fff2 0%, transparent 35%),
+    linear-gradient(140deg, var(--bg-start), var(--bg-end));
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.game-card {
+  width: min(92vw, 560px);
+  padding: 1.2rem;
+  border-radius: 1rem;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8rem;
+}
+
+.brand {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.brand-mark {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+}
+
+.brand-mark svg {
+  width: 100%;
+  height: 100%;
+}
+
+.brand-text {
+  letter-spacing: 0.02em;
+  font-weight: 800;
+  color: #1c3b16;
+}
+
+.brand-text span {
+  color: #3f6e2a;
+}
+
+.scoreboard {
+  font-size: 1rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+#gameCanvas {
+  width: 100%;
+  height: auto;
+  background: var(--canvas-bg);
+  border-radius: 0.8rem;
+  border: 1px solid rgba(47, 125, 50, 0.26);
+  display: block;
+}
+
+.game-stage {
+  position: relative;
+}
+
+.start-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.8rem;
+  background: linear-gradient(160deg, rgba(10, 26, 14, 0.68), rgba(8, 18, 10, 0.72));
+  display: grid;
+  place-items: center;
+  transition: opacity 240ms ease;
+}
+
+.start-overlay.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.start-card {
+  padding: 1rem 1.2rem;
+  border-radius: 0.8rem;
+  background: rgba(234, 248, 228, 0.92);
+  border: 1px solid rgba(31, 94, 38, 0.35);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.start-title {
+  margin: 0 0 0.55rem;
+  color: #1d3d1a;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+#playBtn {
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 1.2rem;
+  color: #f8fafc;
+  background: linear-gradient(145deg, #409a38, #2f7d32);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#playBtn:hover {
+  filter: brightness(1.06);
+}
+
+#playBtn:active {
+  transform: translateY(1px);
+}
+
+.controls {
+  margin-top: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+#restartBtn {
+  border: none;
+  border-radius: 0.55rem;
+  padding: 0.55rem 0.95rem;
+  color: #f8fafc;
+  background: var(--primary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+#restartBtn:hover {
+  background: var(--primary-hover);
+}
+
+#restartBtn:active {
+  transform: translateY(1px);
+}
+
+#statusText {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+@media (max-width: 520px) {
+  .game-card {
+    padding: 0.85rem;
+  }
+
+  .brand {
+    font-size: 1.2rem;
+  }
+
+  .brand-mark {
+    width: 1.7rem;
+    height: 1.7rem;
+  }
+
+  .scoreboard {
+    font-size: 0.92rem;
+  }
+
+  #statusText {
+    font-size: 0.86rem;
+  }
+}

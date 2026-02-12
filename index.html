@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SerpByte</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="game-card" aria-label="Snake game panel">
+        <header class="game-header">
+          <h1 class="brand" aria-label="SerpByte">
+            <span class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 64 64" role="img" aria-label="SerpByte logo">
+                <defs>
+                  <linearGradient id="logoBody" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#95d56d" />
+                    <stop offset="100%" stop-color="#4b7b2a" />
+                  </linearGradient>
+                </defs>
+                <rect x="4" y="4" width="56" height="56" rx="16" fill="#163920" />
+                <path
+                  d="M48 18c-11-6-27 1-27 12 0 7 9 9 14 11 3 1 4 2 4 4 0 4-7 6-14 2"
+                  fill="none"
+                  stroke="url(#logoBody)"
+                  stroke-width="8"
+                  stroke-linecap="round"
+                />
+                <circle cx="47" cy="17" r="2.5" fill="#f8fafc" />
+              </svg>
+            </span>
+            <span class="brand-text">Serp<span>Byte</span></span>
+          </h1>
+          <div class="scoreboard" aria-live="polite">Score: <span id="score">0</span></div>
+        </header>
+
+        <div class="game-stage">
+          <canvas
+            id="gameCanvas"
+            width="480"
+            height="480"
+            role="img"
+            aria-label="Snake game board"
+          ></canvas>
+          <div id="startOverlay" class="start-overlay">
+            <div class="start-card">
+              <p class="start-title">Ready to Hunt?</p>
+              <button id="playBtn" type="button">Play</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="restartBtn" type="button">Restart</button>
+          <p id="statusText">Use arrow keys to play.</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
