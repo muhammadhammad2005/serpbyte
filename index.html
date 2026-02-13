@@ -32,7 +32,10 @@
             </span>
             <span class="brand-text">Serp<span>Byte</span></span>
           </h1>
-          <div class="scoreboard" aria-live="polite">Score: <span id="score">0</span></div>
+          <div class="scoreboard" aria-live="polite">
+            <span class="metric">🍎 Apple: <span id="appleCount">0</span></span>
+            <span class="metric">🏆 Score: <span id="score">0</span></span>
+          </div>
         </header>
 
         <div class="game-stage">
@@ -53,17 +56,42 @@
 
         <div class="controls">
           <button id="restartBtn" type="button">Restart</button>
+          <label class="difficulty" for="difficultySelect">
+            Difficulty
+            <select id="difficultySelect">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+            </select>
+          </label>
           <p id="statusText">Use arrow keys to play.</p>
         </div>
 
-        <div class="mobile-controls" aria-label="Touch controls">
-          <button class="dir-btn up" data-dir="up" aria-label="Move up">▲</button>
-          <button class="dir-btn left" data-dir="left" aria-label="Move left">◀</button>
-          <button class="dir-btn down" data-dir="down" aria-label="Move down">▼</button>
-          <button class="dir-btn right" data-dir="right" aria-label="Move right">▶</button>
+        <div class="mobile-wheel" aria-label="Joystick controls">
+          <div id="wheelBase" class="wheel-base">
+            <div id="wheelKnob" class="wheel-knob"></div>
+          </div>
         </div>
       </section>
     </main>
+    <footer class="beta-footer" aria-label="Release channel">
+      <span class="beta-pill">
+        <span class="beta-mark" aria-hidden="true">
+          <svg viewBox="0 0 64 64" role="img" aria-label="Beta logo">
+            <defs>
+              <linearGradient id="betaGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#b9ef88" />
+                <stop offset="100%" stop-color="#4e8a2e" />
+              </linearGradient>
+            </defs>
+            <rect x="6" y="6" width="52" height="52" rx="14" fill="#1b4425" />
+            <path d="M21 18h14c7 0 11 4 11 9 0 4-2 7-6 8 5 1 7 4 7 8 0 6-5 11-13 11H21z" fill="url(#betaGlow)" />
+            <path d="M29 25v8h5c3 0 5-1 5-4s-2-4-5-4zm0 15v8h6c3 0 5-2 5-4s-2-4-5-4z" fill="#eaf9d9" />
+          </svg>
+        </span>
+        <span class="beta-text">BETA VERSION</span>
+      </span>
+    </footer>
 
     <script src="app.js"></script>
   </body>
