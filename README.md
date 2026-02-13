@@ -133,11 +133,11 @@ You are free to use, modify, and distribute this project.
 
 ## Author
 
-Built by Muhammad Hammad
+Built by **Muhammad Hammad**
 
 ## Disclaimer
 
-SerpByte is currently in Beta.
+SerpByte is currently in **Beta.**
 Expect bugs, unfinished features, and design improvements in future releases.
 
 
