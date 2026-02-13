@@ -94,6 +94,7 @@ body {
 
 .game-stage {
   position: relative;
+  touch-action: none;
 }
 
 .start-overlay {
@@ -177,6 +178,52 @@ body {
   font-size: 0.95rem;
 }
 
+.mobile-controls {
+  margin-top: 0.9rem;
+  display: none;
+  grid-template-columns: repeat(3, 52px);
+  grid-template-rows: repeat(2, 52px);
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.dir-btn {
+  border: 1px solid rgba(22, 57, 32, 0.25);
+  border-radius: 0.65rem;
+  background: linear-gradient(145deg, #f0f8e9, #dcefd2);
+  color: #1d3d1a;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.dir-btn:active {
+  transform: translateY(1px);
+  background: linear-gradient(145deg, #dcefd2, #cfe6c2);
+}
+
+.dir-btn.up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.dir-btn.left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.dir-btn.down {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.dir-btn.right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
 @media (max-width: 520px) {
   .game-card {
     padding: 0.85rem;
@@ -197,5 +244,9 @@ body {
 
   #statusText {
     font-size: 0.86rem;
+  }
+
+  .mobile-controls {
+    display: grid;
   }
 }

@@ -5,6 +5,8 @@ const statusTextEl = document.getElementById("statusText");
 const restartBtn = document.getElementById("restartBtn");
 const startOverlayEl = document.getElementById("startOverlay");
 const playBtn = document.getElementById("playBtn");
+const gameStageEl = document.querySelector(".game-stage");
+const directionButtons = document.querySelectorAll(".dir-btn");
 
 const cellSize = 24;
 const cols = canvas.width / cellSize;
@@ -133,7 +135,14 @@ function resetGame() {
   wallFlashEndTime = 0;
   selfBiteEffect = null;
   scoreEl.textContent = String(score);
-  statusTextEl.textContent = gameStarted ? "Use arrow keys to play." : "Press Play to start.";
+  const isMobileView = window.matchMedia("(max-width: 520px)").matches;
+  if (!gameStarted) {
+    statusTextEl.textContent = "Press Play to start.";
+  } else if (isMobileView) {
+    statusTextEl.textContent = "Swipe or use touch buttons.";
+  } else {
+    statusTextEl.textContent = "Use arrow keys to play.";
+  }
   spawnFood();
 }
 
@@ -153,6 +162,16 @@ function spawnFood() {
 
 function isOppositeDirection(newDir) {
   return direction.x + newDir.x === 0 && direction.y + newDir.y === 0;
+}
+
+function setDirectionFromInput(newDir) {
+  if (!newDir || gameOver || !gameStarted) {
+    return;
+  }
+
+  if (!isOppositeDirection(newDir)) {
+    nextDirection = newDir;
+  }
 }
 
 function moveSnake() {
@@ -490,24 +509,83 @@ window.addEventListener("keydown", (event) => {
   };
 
   const newDir = keyMap[event.key];
-  if (!newDir || gameOver || !gameStarted) {
+  if (!newDir) {
     return;
   }
 
   event.preventDefault();
-
-  if (!isOppositeDirection(newDir)) {
-    nextDirection = newDir;
-  }
+  setDirectionFromInput(newDir);
 });
 
-restartBtn.addEventListener("click", () => {
-  resetGame();
+directionButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const dirMap = {
+      up: { x: 0, y: -1 },
+      down: { x: 0, y: 1 },
+      left: { x: -1, y: 0 },
+      right: { x: 1, y: 0 },
+    };
+    setDirectionFromInput(dirMap[button.dataset.dir]);
+  });
 });
+
+let touchStartX = 0;
+let touchStartY = 0;
+
+gameStageEl.addEventListener(
+  "touchstart",
+  (event) => {
+    if (event.touches.length === 0) {
+      return;
+    }
+    touchStartX = event.touches[0].clientX;
+    touchStartY = event.touches[0].clientY;
+  },
+  { passive: true }
+);
+
+gameStageEl.addEventListener(
+  "touchmove",
+  (event) => {
+    if (!gameStarted) {
+      return;
+    }
+    event.preventDefault();
+  },
+  { passive: false }
+);
+
+gameStageEl.addEventListener(
+  "touchend",
+  (event) => {
+    if (event.changedTouches.length === 0) {
+      return;
+    }
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - touchStartX;
+    const dy = touch.clientY - touchStartY;
+    const threshold = 22;
+
+    if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) {
+      return;
+    }
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      setDirectionFromInput(dx > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 });
+    } else {
+      setDirectionFromInput(dy > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 });
+    }
+  },
+  { passive: true }
+);
 
 playBtn.addEventListener("click", () => {
   gameStarted = true;
   startOverlayEl.classList.add("is-hidden");
+  resetGame();
+});
+
+restartBtn.addEventListener("click", () => {
   resetGame();
 });
 
