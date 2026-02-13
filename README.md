@@ -8,7 +8,7 @@ Status: Beta Release
 
 > ⚠️ Best experienced on desktop. Mobile version is playable but not fully optimized yet.
 
----
+<img width="1903" height="984" alt="image" src="https://github.com/user-attachments/assets/81cda0db-8b99-417a-9c2e-73d42f7d62cb" />
 
 ## Features
 
