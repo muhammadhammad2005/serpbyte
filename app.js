@@ -37,6 +37,7 @@ let wallFlashEndTime = 0;
 let selfBiteEffect = null;
 let filteredHeadAngle = null;
 let renderPointsCache = [];
+let visualTuning = null;
 
 const snakePalette = {
   headBase: "#1d4cc2",
@@ -58,6 +59,49 @@ backgroundLayer.width = canvas.width;
 backgroundLayer.height = canvas.height;
 const bgCtx = backgroundLayer.getContext("2d", { alpha: false });
 const appleSprite = createAppleSprite(256);
+
+function updateVisualTuning() {
+  const isMobile = window.matchMedia("(max-width: 520px)").matches || window.matchMedia("(pointer: coarse)").matches;
+  visualTuning = isMobile
+    ? {
+        isMobile: true,
+        maxVisualPoints: 120,
+        smoothPasses: 1,
+        smoothEdgeWeight: 0.2,
+        smoothCenterWeight: 0.6,
+        denseMaxPoints: 220,
+        denseSubdivisionCap: 2,
+        denseSubdivisionDivisor: 0.68,
+        stabilizeFollow: 0.68,
+        pathTension: 0.76,
+        drawBellySeparators: false,
+        drawRearTaper: false,
+        headAngleFollow: 0.18,
+        foodBobAmp: 0.8,
+        foodPulseAmp: 0.035,
+        foodDrawScale: 1.16,
+        selfBiteWobbleScale: 0.45,
+      }
+    : {
+        isMobile: false,
+        maxVisualPoints: 180,
+        smoothPasses: 2,
+        smoothEdgeWeight: 0.22,
+        smoothCenterWeight: 0.56,
+        denseMaxPoints: 360,
+        denseSubdivisionCap: 3,
+        denseSubdivisionDivisor: 0.46,
+        stabilizeFollow: 0.52,
+        pathTension: 0.84,
+        drawBellySeparators: true,
+        drawRearTaper: true,
+        headAngleFollow: 0.12,
+        foodBobAmp: 1.4,
+        foodPulseAmp: 0.06,
+        foodDrawScale: 1.28,
+        selfBiteWobbleScale: 1,
+      };
+}
 
 function buildGrassBackground() {
   const w = backgroundLayer.width;
@@ -234,9 +278,10 @@ function resetGame() {
   filteredHeadAngle = null;
   renderPointsCache = [];
   awaitingFirstMove = true;
+  resetWheelKnob(true);
   scoreEl.textContent = String(score);
   appleCountEl.textContent = String(appleCount);
-  const isMobileView = window.matchMedia("(max-width: 520px)").matches;
+  const isMobileView = visualTuning?.isMobile ?? false;
   if (!gameStarted) {
     statusTextEl.textContent = "Press Play to start.";
   } else if (isMobileView) {
@@ -331,7 +376,8 @@ function moveSnake() {
         removedVisualPath.push({ x: px, y: py });
       }
     }
-    const smoothedRemovedPath = limitPathPoints(smoothSnakePoints(densifySnakePoints(removedVisualPath)), 120);
+    const bitePathMaxPoints = visualTuning?.isMobile ? 90 : 120;
+    const smoothedRemovedPath = limitPathPoints(smoothSnakePoints(densifySnakePoints(removedVisualPath)), bitePathMaxPoints);
 
     selfBiteEffect = {
       x: biteX,
@@ -375,18 +421,21 @@ function drawFood(nowMs) {
   const cx = food.x * cellSize + cellSize / 2;
   const cy = food.y * cellSize + cellSize / 2;
   const t = nowMs * 0.0045;
-  const bob = Math.sin(t) * 1.4;
-  const pulse = 0.97 + 0.06 * Math.sin(t * 1.18);
-  const sway = Math.sin(t * 0.9) * 0.08;
-  const drawSize = cellSize * 1.28;
+  const isMobileMode = visualTuning?.isMobile ?? false;
+  const bob = Math.sin(t) * (visualTuning?.foodBobAmp ?? 1.4);
+  const pulse = 0.97 + (visualTuning?.foodPulseAmp ?? 0.06) * Math.sin(t * 1.18);
+  const sway = isMobileMode ? 0 : Math.sin(t * 0.9) * 0.08;
+  const drawSize = cellSize * (visualTuning?.foodDrawScale ?? 1.28);
 
   ctx.save();
   ctx.translate(cx, cy + bob);
 
-  ctx.fillStyle = "rgba(28, 54, 20, 0.26)";
-  ctx.beginPath();
-  ctx.ellipse(0, cellSize * 0.28, drawSize * 0.35, drawSize * 0.18, 0, 0, Math.PI * 2);
-  ctx.fill();
+  if (!isMobileMode) {
+    ctx.fillStyle = "rgba(28, 54, 20, 0.26)";
+    ctx.beginPath();
+    ctx.ellipse(0, cellSize * 0.28, drawSize * 0.35, drawSize * 0.18, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   ctx.rotate(sway);
   ctx.scale(pulse, pulse);
@@ -408,7 +457,7 @@ function getSnakePoints(alpha) {
     };
   }
 
-  const maxVisualPoints = 180;
+  const maxVisualPoints = visualTuning?.maxVisualPoints ?? 180;
   if (rawPoints.length <= maxVisualPoints) {
     return rawPoints;
   }
@@ -431,7 +480,9 @@ function smoothSnakePoints(points) {
   }
 
   let current = points;
-  const passes = 2;
+  const passes = visualTuning?.smoothPasses ?? 2;
+  const edgeWeight = visualTuning?.smoothEdgeWeight ?? 0.22;
+  const centerWeight = visualTuning?.smoothCenterWeight ?? 0.56;
 
   for (let pass = 0; pass < passes; pass += 1) {
     const smoothed = new Array(current.length);
@@ -443,8 +494,8 @@ function smoothSnakePoints(points) {
       const b = current[i];
       const c = current[i + 1];
       smoothed[i] = {
-        x: a.x * 0.22 + b.x * 0.56 + c.x * 0.22,
-        y: a.y * 0.22 + b.y * 0.56 + c.y * 0.22,
+        x: a.x * edgeWeight + b.x * centerWeight + c.x * edgeWeight,
+        y: a.y * edgeWeight + b.y * centerWeight + c.y * edgeWeight,
       };
     }
     current = smoothed;
@@ -459,7 +510,9 @@ function densifySnakePoints(points) {
   }
 
   const dense = [];
-  const maxPoints = 360;
+  const maxPoints = visualTuning?.denseMaxPoints ?? 360;
+  const subdivCap = visualTuning?.denseSubdivisionCap ?? 3;
+  const subdivDivisor = visualTuning?.denseSubdivisionDivisor ?? 0.46;
 
   for (let i = 0; i < points.length - 1; i += 1) {
     const a = points[i];
@@ -467,7 +520,7 @@ function densifySnakePoints(points) {
     dense.push(a);
 
     const dist = Math.hypot(b.x - a.x, b.y - a.y);
-    const subdivisions = Math.min(3, Math.max(1, Math.floor(dist / (cellSize * 0.46))));
+    const subdivisions = Math.min(subdivCap, Math.max(1, Math.floor(dist / (cellSize * subdivDivisor))));
 
     for (let s = 1; s <= subdivisions; s += 1) {
       const t = s / (subdivisions + 1);
@@ -517,7 +570,7 @@ function stabilizeRenderPoints(points) {
     return renderPointsCache;
   }
 
-  const follow = 0.52;
+  const follow = visualTuning?.stabilizeFollow ?? 0.52;
   for (let i = 0; i < points.length; i += 1) {
     const cache = renderPointsCache[i];
     const target = points[i];
@@ -548,7 +601,7 @@ function traceSmoothPath(points) {
   }
 
   ctx.moveTo(points[0].x, points[0].y);
-  const tension = 0.84;
+  const tension = visualTuning?.pathTension ?? 0.84;
   for (let i = 0; i < points.length - 1; i += 1) {
     const p0 = i > 0 ? points[i - 1] : points[i];
     const p1 = points[i];
@@ -610,31 +663,33 @@ function drawSnakeBody(points) {
   traceSmoothPath(points);
   ctx.stroke();
 
-  // Belly separators.
-  ctx.strokeStyle = snakePalette.bellyEdge;
-  ctx.lineWidth = 1;
-  const stride = Math.max(2, Math.floor(points.length / 24));
-  for (let i = 2; i < points.length - 1; i += stride) {
-    const p = points[i];
-    const prev = points[i - 1];
-    const next = points[i + 1];
-    const tx = next.x - prev.x;
-    const ty = next.y - prev.y;
-    const len = Math.hypot(tx, ty) || 1;
-    const nx = -ty / len;
-    const ny = tx / len;
-    const half = cellSize * 0.12;
-    ctx.beginPath();
-    ctx.moveTo(p.x - nx * half, p.y - ny * half);
-    ctx.lineTo(p.x + nx * half, p.y + ny * half);
-    ctx.stroke();
+  // Belly separators (disabled in mobile profile for performance).
+  if (visualTuning?.drawBellySeparators ?? true) {
+    ctx.strokeStyle = snakePalette.bellyEdge;
+    ctx.lineWidth = 1;
+    const stride = Math.max(2, Math.floor(points.length / 24));
+    for (let i = 2; i < points.length - 1; i += stride) {
+      const p = points[i];
+      const prev = points[i - 1];
+      const next = points[i + 1];
+      const tx = next.x - prev.x;
+      const ty = next.y - prev.y;
+      const len = Math.hypot(tx, ty) || 1;
+      const nx = -ty / len;
+      const ny = tx / len;
+      const half = cellSize * 0.12;
+      ctx.beginPath();
+      ctx.moveTo(p.x - nx * half, p.y - ny * half);
+      ctx.lineTo(p.x + nx * half, p.y + ny * half);
+      ctx.stroke();
+    }
   }
   ctx.restore();
 
   // Rear taper pass so the bottom half transitions into a slimmer real tail.
   const taperStart = Math.max(1, Math.floor(points.length * 0.62));
   const taperCount = points.length - taperStart - 1;
-  if (taperCount > 2) {
+  if (taperCount > 2 && (visualTuning?.drawRearTaper ?? true)) {
     ctx.save();
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -717,7 +772,7 @@ function drawHead(points, nowMs) {
   if (filteredHeadAngle === null) {
     filteredHeadAngle = targetAngle;
   } else {
-    filteredHeadAngle = lerpAngle(filteredHeadAngle, targetAngle, 0.12);
+    filteredHeadAngle = lerpAngle(filteredHeadAngle, targetAngle, visualTuning?.headAngleFollow ?? 0.12);
   }
   const angle = filteredHeadAngle;
   const headRadius = cellSize * 0.39;
@@ -881,7 +936,8 @@ function drawSelfBiteEffect(nowMs) {
     const len = Math.hypot(tx, ty) || 1;
     const nx = -ty / len;
     const ny = tx / len;
-    const wobble = Math.sin((1 - t) * Math.PI * 2.4 + progress * 9.2) * cellSize * 0.02 * (1 - progress) * (1 - t);
+    const wobbleScale = visualTuning?.selfBiteWobbleScale ?? 1;
+    const wobble = Math.sin((1 - t) * Math.PI * 2.4 + progress * 9.2) * cellSize * 0.02 * (1 - progress) * (1 - t) * wobbleScale;
     transformed[i] = {
       x: p.x + (bite.x - p.x) * easedPull + nx * wobble,
       y: p.y + (bite.y - p.y) * easedPull + ny * wobble,
@@ -978,10 +1034,16 @@ function gameLoop(timestamp) {
   const delta = Math.min(timestamp - lastTimestamp, 40);
   lastTimestamp = timestamp;
   elapsedMs += delta;
+  updateWheelFrame();
 
-  while (elapsedMs >= stepDurationMs) {
+  let simSteps = 0;
+  while (elapsedMs >= stepDurationMs && simSteps < 2) {
     moveSnake();
     elapsedMs -= stepDurationMs;
+    simSteps += 1;
+  }
+  if (simSteps === 2) {
+    elapsedMs = Math.min(elapsedMs, stepDurationMs);
   }
 
   const alpha = Math.min(elapsedMs / stepDurationMs, 1);
@@ -1014,6 +1076,13 @@ let wheelDragging = false;
 let wheelCenterX = 0;
 let wheelCenterY = 0;
 const wheelRadius = 34;
+let wheelTargetX = 0;
+let wheelTargetY = 0;
+let wheelVisualX = 0;
+let wheelVisualY = 0;
+let wheelDirectionKey = "";
+let lastWheelDirectionKey = "";
+let wheelTransformCache = "translate(-50%, -50%)";
 
 function setWheelCenter() {
   const rect = wheelBase.getBoundingClientRect();
@@ -1021,27 +1090,73 @@ function setWheelCenter() {
   wheelCenterY = rect.top + rect.height / 2;
 }
 
-function resetWheelKnob() {
-  wheelKnob.style.transform = "translate(-50%, -50%)";
+function setWheelKnobTransform(x, y) {
+  const transform = `translate(calc(-50% + ${x.toFixed(1)}px), calc(-50% + ${y.toFixed(1)}px))`;
+  if (transform !== wheelTransformCache) {
+    wheelTransformCache = transform;
+    wheelKnob.style.transform = transform;
+  }
 }
 
-function updateWheelPosition(clientX, clientY) {
+function resetWheelKnob(force = false) {
+  wheelTargetX = 0;
+  wheelTargetY = 0;
+  wheelDirectionKey = "";
+  if (force) {
+    wheelVisualX = 0;
+    wheelVisualY = 0;
+    lastWheelDirectionKey = "";
+    setWheelKnobTransform(0, 0);
+  }
+}
+
+function updateWheelTarget(clientX, clientY) {
   const dx = clientX - wheelCenterX;
   const dy = clientY - wheelCenterY;
   const distance = Math.hypot(dx, dy);
   const limited = Math.min(distance, wheelRadius);
   const angle = Math.atan2(dy, dx);
-  const x = Math.cos(angle) * limited;
-  const y = Math.sin(angle) * limited;
-  wheelKnob.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+  wheelTargetX = Math.cos(angle) * limited;
+  wheelTargetY = Math.sin(angle) * limited;
 
   if (distance < 14) {
+    wheelDirectionKey = "";
     return;
   }
+
   if (Math.abs(dx) > Math.abs(dy)) {
-    setDirectionFromInput(dx > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 });
+    wheelDirectionKey = dx > 0 ? "right" : "left";
   } else {
-    setDirectionFromInput(dy > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 });
+    wheelDirectionKey = dy > 0 ? "down" : "up";
+  }
+}
+
+function updateWheelFrame() {
+  const follow = wheelDragging ? 0.42 : 0.3;
+  wheelVisualX += (wheelTargetX - wheelVisualX) * follow;
+  wheelVisualY += (wheelTargetY - wheelVisualY) * follow;
+  if (Math.abs(wheelVisualX) < 0.15) {
+    wheelVisualX = 0;
+  }
+  if (Math.abs(wheelVisualY) < 0.15) {
+    wheelVisualY = 0;
+  }
+  setWheelKnobTransform(wheelVisualX, wheelVisualY);
+
+  if (!wheelDragging || !wheelDirectionKey) {
+    lastWheelDirectionKey = "";
+    return;
+  }
+
+  if (wheelDirectionKey !== lastWheelDirectionKey) {
+    const dirMap = {
+      up: { x: 0, y: -1 },
+      down: { x: 0, y: 1 },
+      left: { x: -1, y: 0 },
+      right: { x: 1, y: 0 },
+    };
+    setDirectionFromInput(dirMap[wheelDirectionKey]);
+    lastWheelDirectionKey = wheelDirectionKey;
   }
 }
 
@@ -1095,14 +1210,20 @@ gameStageEl.addEventListener(
   { passive: true }
 );
 
-wheelBase.addEventListener("touchstart", (event) => {
-  if (event.touches.length === 0) {
-    return;
-  }
-  wheelDragging = true;
-  setWheelCenter();
-  updateWheelPosition(event.touches[0].clientX, event.touches[0].clientY);
-});
+wheelBase.addEventListener(
+  "touchstart",
+  (event) => {
+    if (event.touches.length === 0) {
+      return;
+    }
+    event.preventDefault();
+    wheelDragging = true;
+    setWheelCenter();
+    updateWheelTarget(event.touches[0].clientX, event.touches[0].clientY);
+    updateWheelFrame();
+  },
+  { passive: false }
+);
 
 wheelBase.addEventListener(
   "touchmove",
@@ -1111,19 +1232,19 @@ wheelBase.addEventListener(
       return;
     }
     event.preventDefault();
-    updateWheelPosition(event.touches[0].clientX, event.touches[0].clientY);
+    updateWheelTarget(event.touches[0].clientX, event.touches[0].clientY);
   },
   { passive: false }
 );
 
 wheelBase.addEventListener("touchend", () => {
   wheelDragging = false;
-  resetWheelKnob();
+  resetWheelKnob(false);
 });
 
 wheelBase.addEventListener("touchcancel", () => {
   wheelDragging = false;
-  resetWheelKnob();
+  resetWheelKnob(false);
 });
 
 playBtn.addEventListener("click", () => {
@@ -1136,6 +1257,12 @@ restartBtn.addEventListener("click", () => {
   resetGame();
 });
 
+window.addEventListener("resize", () => {
+  updateVisualTuning();
+  setWheelCenter();
+});
+
+updateVisualTuning();
 buildGrassBackground();
 applyDifficulty(difficultySelect.value);
 resetGame();
