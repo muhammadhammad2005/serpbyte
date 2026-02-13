@@ -8,8 +8,7 @@ const difficultySelect = document.getElementById("difficultySelect");
 const startOverlayEl = document.getElementById("startOverlay");
 const playBtn = document.getElementById("playBtn");
 const gameStageEl = document.querySelector(".game-stage");
-const wheelBase = document.getElementById("wheelBase");
-const wheelKnob = document.getElementById("wheelKnob");
+const mobilePadButtons = document.querySelectorAll(".pad-btn[data-dir]");
 
 const cellSize = 24;
 const cols = canvas.width / cellSize;
@@ -69,10 +68,10 @@ function updateVisualTuning() {
         smoothPasses: 1,
         smoothEdgeWeight: 0.2,
         smoothCenterWeight: 0.6,
-        denseMaxPoints: 220,
-        denseSubdivisionCap: 2,
-        denseSubdivisionDivisor: 0.68,
-        stabilizeFollow: 0.68,
+        denseMaxPoints: 160,
+        denseSubdivisionCap: 1,
+        denseSubdivisionDivisor: 0.8,
+        stabilizeFollow: 0.72,
         pathTension: 0.76,
         drawBellySeparators: false,
         drawRearTaper: false,
@@ -80,7 +79,10 @@ function updateVisualTuning() {
         foodBobAmp: 0.8,
         foodPulseAmp: 0.035,
         foodDrawScale: 1.16,
-        selfBiteWobbleScale: 0.45,
+        selfBiteWobbleScale: 0,
+        drawBodyHighlights: false,
+        drawTongue: false,
+        drawSelfBiteJawMarks: false,
       }
     : {
         isMobile: false,
@@ -100,6 +102,9 @@ function updateVisualTuning() {
         foodPulseAmp: 0.06,
         foodDrawScale: 1.28,
         selfBiteWobbleScale: 1,
+        drawBodyHighlights: true,
+        drawTongue: true,
+        drawSelfBiteJawMarks: true,
       };
 }
 
@@ -278,14 +283,13 @@ function resetGame() {
   filteredHeadAngle = null;
   renderPointsCache = [];
   awaitingFirstMove = true;
-  resetWheelKnob(true);
   scoreEl.textContent = String(score);
   appleCountEl.textContent = String(appleCount);
   const isMobileView = visualTuning?.isMobile ?? false;
   if (!gameStarted) {
     statusTextEl.textContent = "Press Play to start.";
   } else if (isMobileView) {
-    statusTextEl.textContent = "Use wheel or swipe to move.";
+    statusTextEl.textContent = "Use touch arrows or swipe.";
   } else {
     statusTextEl.textContent = "Press an arrow key to move.";
   }
@@ -649,19 +653,21 @@ function drawSnakeBody(points) {
   traceSmoothPath(points);
   ctx.stroke();
 
-  // Top highlight stripe.
-  ctx.strokeStyle = "rgba(202, 223, 255, 0.46)";
-  ctx.lineWidth = cellSize * 0.1;
-  ctx.beginPath();
-  traceSmoothPath(points);
-  ctx.stroke();
+  if (visualTuning?.drawBodyHighlights ?? true) {
+    // Top highlight stripe.
+    ctx.strokeStyle = "rgba(202, 223, 255, 0.46)";
+    ctx.lineWidth = cellSize * 0.1;
+    ctx.beginPath();
+    traceSmoothPath(points);
+    ctx.stroke();
 
-  // Belly stripe for 3D volume.
-  ctx.strokeStyle = snakePalette.bellyCore;
-  ctx.lineWidth = cellSize * 0.13;
-  ctx.beginPath();
-  traceSmoothPath(points);
-  ctx.stroke();
+    // Belly stripe for 3D volume.
+    ctx.strokeStyle = snakePalette.bellyCore;
+    ctx.lineWidth = cellSize * 0.13;
+    ctx.beginPath();
+    traceSmoothPath(points);
+    ctx.stroke();
+  }
 
   // Belly separators (disabled in mobile profile for performance).
   if (visualTuning?.drawBellySeparators ?? true) {
@@ -863,28 +869,30 @@ function drawHead(points, nowMs) {
   ctx.arc(headRadius * 0.9, headRadius * 0.12, 1.5, 0, Math.PI * 2);
   ctx.fill();
 
-  // Subtle forked tongue flick outside the mouth area.
-  const flickCycle = nowMs % 1500;
-  const flickPhase = flickCycle < 260 ? Math.sin((flickCycle / 260) * Math.PI) : 0;
-  if (flickPhase > 0.08) {
-    const baseX = headRadius * 1.08;
-    const tongueLen = headRadius * (0.85 + 1.65 * flickPhase);
-    const fork = headRadius * (0.12 + 0.2 * flickPhase);
+  // Subtle forked tongue flick.
+  if (visualTuning?.drawTongue ?? true) {
+    const flickCycle = nowMs % 1500;
+    const flickPhase = flickCycle < 260 ? Math.sin((flickCycle / 260) * Math.PI) : 0;
+    if (flickPhase > 0.08) {
+      const baseX = headRadius * 1.08;
+      const tongueLen = headRadius * (0.85 + 1.65 * flickPhase);
+      const fork = headRadius * (0.12 + 0.2 * flickPhase);
 
-    ctx.strokeStyle = "#b74a56";
-    ctx.lineWidth = 1.4;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(baseX, 0);
-    ctx.lineTo(baseX + tongueLen, 0);
-    ctx.stroke();
+      ctx.strokeStyle = "#b74a56";
+      ctx.lineWidth = 1.4;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(baseX, 0);
+      ctx.lineTo(baseX + tongueLen, 0);
+      ctx.stroke();
 
-    ctx.beginPath();
-    ctx.moveTo(baseX + tongueLen, 0);
-    ctx.lineTo(baseX + tongueLen + headRadius * 0.18, -fork);
-    ctx.moveTo(baseX + tongueLen, 0);
-    ctx.lineTo(baseX + tongueLen + headRadius * 0.18, fork);
-    ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(baseX + tongueLen, 0);
+      ctx.lineTo(baseX + tongueLen + headRadius * 0.18, -fork);
+      ctx.moveTo(baseX + tongueLen, 0);
+      ctx.lineTo(baseX + tongueLen + headRadius * 0.18, fork);
+      ctx.stroke();
+    }
   }
 
   ctx.restore();
@@ -976,22 +984,24 @@ function drawSelfBiteEffect(nowMs) {
   ctx.stroke();
   ctx.restore();
 
-  // Subtle bite clamp marks near the mouth for a natural chewing feel.
-  const chewPulse = Math.sin(progress * Math.PI);
-  const jawOpen = cellSize * (0.12 + chewPulse * 0.06);
-  ctx.save();
-  ctx.translate(bite.x, bite.y);
-  ctx.rotate(bite.angle ?? filteredHeadAngle ?? 0);
-  ctx.strokeStyle = `rgba(52, 26, 26, ${0.65 * alpha})`;
-  ctx.lineWidth = 1.5;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(cellSize * 0.05, -jawOpen);
-  ctx.quadraticCurveTo(cellSize * 0.23, -jawOpen * 0.35, cellSize * 0.35, -jawOpen * 0.08);
-  ctx.moveTo(cellSize * 0.05, jawOpen);
-  ctx.quadraticCurveTo(cellSize * 0.23, jawOpen * 0.35, cellSize * 0.35, jawOpen * 0.08);
-  ctx.stroke();
-  ctx.restore();
+  // Bite clamp marks near the mouth.
+  if (visualTuning?.drawSelfBiteJawMarks ?? true) {
+    const chewPulse = Math.sin(progress * Math.PI);
+    const jawOpen = cellSize * (0.12 + chewPulse * 0.06);
+    ctx.save();
+    ctx.translate(bite.x, bite.y);
+    ctx.rotate(bite.angle ?? filteredHeadAngle ?? 0);
+    ctx.strokeStyle = `rgba(52, 26, 26, ${0.65 * alpha})`;
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(cellSize * 0.05, -jawOpen);
+    ctx.quadraticCurveTo(cellSize * 0.23, -jawOpen * 0.35, cellSize * 0.35, -jawOpen * 0.08);
+    ctx.moveTo(cellSize * 0.05, jawOpen);
+    ctx.quadraticCurveTo(cellSize * 0.23, jawOpen * 0.35, cellSize * 0.35, jawOpen * 0.08);
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 function drawWallFlash(nowMs) {
@@ -1034,7 +1044,6 @@ function gameLoop(timestamp) {
   const delta = Math.min(timestamp - lastTimestamp, 40);
   lastTimestamp = timestamp;
   elapsedMs += delta;
-  updateWheelFrame();
 
   let simSteps = 0;
   while (elapsedMs >= stepDurationMs && simSteps < 2) {
@@ -1051,114 +1060,64 @@ function gameLoop(timestamp) {
   requestAnimationFrame(gameLoop);
 }
 
-window.addEventListener("keydown", (event) => {
-  const keyMap = {
-    ArrowUp: { x: 0, y: -1 },
-    ArrowDown: { x: 0, y: 1 },
-    ArrowLeft: { x: -1, y: 0 },
-    ArrowRight: { x: 1, y: 0 },
-  };
+const inputDirectionMap = {
+  up: { x: 0, y: -1 },
+  down: { x: 0, y: 1 },
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+  ArrowUp: { x: 0, y: -1 },
+  ArrowDown: { x: 0, y: 1 },
+  ArrowLeft: { x: -1, y: 0 },
+  ArrowRight: { x: 1, y: 0 },
+};
 
-  const newDir = keyMap[event.key];
-  if (!newDir) {
+function triggerDirection(key) {
+  const dir = inputDirectionMap[key];
+  if (!dir) {
     return;
   }
+  setDirectionFromInput(dir);
+}
 
+window.addEventListener("keydown", (event) => {
+  if (!inputDirectionMap[event.key]) {
+    return;
+  }
   event.preventDefault();
-  setDirectionFromInput(newDir);
+  triggerDirection(event.key);
 });
 
 difficultySelect.addEventListener("change", () => {
   applyDifficulty(difficultySelect.value);
 });
 
-let wheelDragging = false;
-let wheelCenterX = 0;
-let wheelCenterY = 0;
-const wheelRadius = 34;
-let wheelTargetX = 0;
-let wheelTargetY = 0;
-let wheelVisualX = 0;
-let wheelVisualY = 0;
-let wheelDirectionKey = "";
-let lastWheelDirectionKey = "";
-let wheelTransformCache = "translate(-50%, -50%)";
-
-function setWheelCenter() {
-  const rect = wheelBase.getBoundingClientRect();
-  wheelCenterX = rect.left + rect.width / 2;
-  wheelCenterY = rect.top + rect.height / 2;
-}
-
-function setWheelKnobTransform(x, y) {
-  const transform = `translate(calc(-50% + ${x.toFixed(1)}px), calc(-50% + ${y.toFixed(1)}px))`;
-  if (transform !== wheelTransformCache) {
-    wheelTransformCache = transform;
-    wheelKnob.style.transform = transform;
-  }
-}
-
-function resetWheelKnob(force = false) {
-  wheelTargetX = 0;
-  wheelTargetY = 0;
-  wheelDirectionKey = "";
-  if (force) {
-    wheelVisualX = 0;
-    wheelVisualY = 0;
-    lastWheelDirectionKey = "";
-    setWheelKnobTransform(0, 0);
-  }
-}
-
-function updateWheelTarget(clientX, clientY) {
-  const dx = clientX - wheelCenterX;
-  const dy = clientY - wheelCenterY;
-  const distance = Math.hypot(dx, dy);
-  const limited = Math.min(distance, wheelRadius);
-  const angle = Math.atan2(dy, dx);
-  wheelTargetX = Math.cos(angle) * limited;
-  wheelTargetY = Math.sin(angle) * limited;
-
-  if (distance < 14) {
-    wheelDirectionKey = "";
+mobilePadButtons.forEach((button) => {
+  const key = button.dataset.dir;
+  if (!key || !inputDirectionMap[key]) {
     return;
   }
 
-  if (Math.abs(dx) > Math.abs(dy)) {
-    wheelDirectionKey = dx > 0 ? "right" : "left";
-  } else {
-    wheelDirectionKey = dy > 0 ? "down" : "up";
-  }
-}
+  button.addEventListener(
+    "touchstart",
+    (event) => {
+      event.preventDefault();
+      triggerDirection(key);
+    },
+    { passive: false }
+  );
 
-function updateWheelFrame() {
-  const follow = wheelDragging ? 0.42 : 0.3;
-  wheelVisualX += (wheelTargetX - wheelVisualX) * follow;
-  wheelVisualY += (wheelTargetY - wheelVisualY) * follow;
-  if (Math.abs(wheelVisualX) < 0.15) {
-    wheelVisualX = 0;
-  }
-  if (Math.abs(wheelVisualY) < 0.15) {
-    wheelVisualY = 0;
-  }
-  setWheelKnobTransform(wheelVisualX, wheelVisualY);
+  button.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "mouse") {
+      event.preventDefault();
+    }
+    triggerDirection(key);
+  });
 
-  if (!wheelDragging || !wheelDirectionKey) {
-    lastWheelDirectionKey = "";
-    return;
-  }
-
-  if (wheelDirectionKey !== lastWheelDirectionKey) {
-    const dirMap = {
-      up: { x: 0, y: -1 },
-      down: { x: 0, y: 1 },
-      left: { x: -1, y: 0 },
-      right: { x: 1, y: 0 },
-    };
-    setDirectionFromInput(dirMap[wheelDirectionKey]);
-    lastWheelDirectionKey = wheelDirectionKey;
-  }
-}
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    triggerDirection(key);
+  });
+});
 
 let touchStartX = 0;
 let touchStartY = 0;
@@ -1210,43 +1169,6 @@ gameStageEl.addEventListener(
   { passive: true }
 );
 
-wheelBase.addEventListener(
-  "touchstart",
-  (event) => {
-    if (event.touches.length === 0) {
-      return;
-    }
-    event.preventDefault();
-    wheelDragging = true;
-    setWheelCenter();
-    updateWheelTarget(event.touches[0].clientX, event.touches[0].clientY);
-    updateWheelFrame();
-  },
-  { passive: false }
-);
-
-wheelBase.addEventListener(
-  "touchmove",
-  (event) => {
-    if (!wheelDragging || event.touches.length === 0) {
-      return;
-    }
-    event.preventDefault();
-    updateWheelTarget(event.touches[0].clientX, event.touches[0].clientY);
-  },
-  { passive: false }
-);
-
-wheelBase.addEventListener("touchend", () => {
-  wheelDragging = false;
-  resetWheelKnob(false);
-});
-
-wheelBase.addEventListener("touchcancel", () => {
-  wheelDragging = false;
-  resetWheelKnob(false);
-});
-
 playBtn.addEventListener("click", () => {
   gameStarted = true;
   startOverlayEl.classList.add("is-hidden");
@@ -1259,7 +1181,6 @@ restartBtn.addEventListener("click", () => {
 
 window.addEventListener("resize", () => {
   updateVisualTuning();
-  setWheelCenter();
 });
 
 updateVisualTuning();
